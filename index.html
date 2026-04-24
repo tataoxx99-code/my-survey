@@ -385,14 +385,31 @@
         let btn = document.getElementById('submit-btn');
         btn.innerText = "正在发送..."; btn.disabled = true;
         
+        // 按照 Forminit 官方规范，包装表单数据并加上 fi-text- 前缀
+        let formData = new FormData();
+        formData.append("fi-text-调研评估原始数据", document.getElementById('raw-data').value);
+        
         fetch("https://forminit.com/f/fa26t1zysxk", {
             method: 'POST',
-            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-            body: JSON.stringify({ "EvaluationData": document.getElementById('raw-data').value })
+            headers: { 'Accept': 'application/json' }, // 注意：用 FormData 时绝对不能手动写 Content-Type，让浏览器自动处理
+            body: formData
         }).then(res => {
-            if (res.ok) { alert("提交成功！数据已进入数据库。"); btn.innerText = "已提交"; } 
-            else { alert("提交失败，请点击重新提交"); btn.disabled = false; btn.innerText = "重新提交"; }
-        }).catch(() => { alert("网络异常"); btn.disabled = false; });
+            if (res.ok) { 
+                alert("提交成功！数据已进入数据库。"); 
+                btn.innerText = "已提交"; 
+            } else { 
+                // 打印出服务器的报错信息方便排查
+                console.error("服务器拒收，状态码:", res.status);
+                alert("提交失败，请检查后台权限设置！"); 
+                btn.disabled = false; 
+                btn.innerText = "重新提交"; 
+            }
+        }).catch((err) => { 
+            console.error("请求中断:", err);
+            alert("网络异常，请重试"); 
+            btn.disabled = false; 
+            btn.innerText = "重新提交"; 
+        });
     }
 </script>
 
