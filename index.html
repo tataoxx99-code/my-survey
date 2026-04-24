@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>外骨骼造型设计评估</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f7fa; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; min-height: 100vh; background: #fff; display: flex; flex-direction: column; }
+        .page { display: none; padding: 20px; flex: 1; }
+        .page.active { display: flex; flex-direction: column; }
+        
+        h1 { font-size: 20px; text-align: center; color: #2c3e50; margin-bottom: 20px; }
+        .intro-text { font-size: 15px; line-height: 1.6; color: #555; }
+        .btn { background: #007bff; color: white; border: none; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; width: 100%; cursor: pointer; margin-top: 20px; text-align: center; display: block; box-sizing: border-box; transition: background 0.3s; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        /* 新增：个人信息表单样式 */
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { display: block; font-size: 14px; font-weight: bold; margin-bottom: 5px; color: #333; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; box-sizing: border-box; font-family: inherit; }
+        .form-group input:focus, .form-group select:focus { border-color: #007bff; outline: none; box-shadow: 0 0 5px rgba(0,123,255,0.2); }
+
+        /* 图片容器：完美适配 1:1 比例 */
+        .img-container { width: 100%; display: flex; justify-content: center; align-items: center; background-color: #fafafa; border-radius: 8px; overflow: hidden; transition: all 0.5s ease; position: relative; }
+        #scheme-img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+        .img-container-large { height: 65vh; margin-top: 5vh; }
+        .img-container-small { height: 35vh; margin-top: 0; border-bottom: 1px solid #eee; }
+        
+        .scoring-module { display: none; margin-top: 15px; flex: 1; flex-direction: column; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .indicator-title { font-size: 17px; font-weight: bold; color: #007bff; margin-bottom: 4px; }
+        .indicator-desc { font-size: 13px; color: #777; margin-bottom: 25px; background: #f8f9fa; padding: 8px; border-radius: 6px; }
+        
+        .module-label { font-size: 14px; font-weight: bold; margin: 12px 0 8px 0; border-left: 4px solid #007bff; padding-left: 8px; }
+
+        #score-slider { margin: 0 15px 40px 15px; }
+        .noUi-handle { border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .noUi-pips { font-size: 11px; }
+
+        .distribution-options { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .dist-option { flex: 1; text-align: center; }
+        .dist-option input[type="radio"] { display: none; }
+        .dist-option label { display: block; padding: 10px 4px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px; margin: 0 3px; font-size: 13px; transition: 0.2s; }
+        .dist-option input[type="radio"]:checked + label { background: #007bff; color: white; border-color: #007bff; }
+        .dist-option input[type="radio"]:disabled + label { background: #e9ecef; color: #aaa; }
+
+        .confidence-wrapper { margin-bottom: 25px; }
+        input[type="range"] { width: 100%; margin: 10px 0; }
+        .conf-labels { display: flex; justify-content: space-between; font-size: 11px; color: #888; }
+        #conf-val-display { font-weight: bold; color: #007bff; }
+
+        .result-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 15px; }
+        .result-table th, .result-table td { border: 1px solid #ddd; padding: 6px; text-align: center; }
+        .result-table th { background: #f4f4f4; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="page-intro" class="page active">
+        <h1>外骨骼造型设计评估</h1>
+        <div class="intro-text">
+            <p>欢迎参加人体下肢关节对应型硬质外骨骼的造型评估问卷调研，需要您基于自己的生活经验给不同外骨骼造型进行打分。</p>
+            <p style="color: #e74c3c; font-weight: bold; font-size: 16px; background: #fadbd8; padding: 10px; border-radius: 6px; text-align: center;">
+                本次调研共包含 6 个外骨骼造型方案，请依次完成打分。
+            </p>
+            <p><strong>打分规则：</strong></p>
+            <ul>
+                <li>分数范围 0-10 分，滑动滑块进行选择。</li>
+                <li>若不确定具体分值，请拉出一个<strong>分数区间</strong>，并选择<strong>分布偏向</strong>（偏左/偏右/居中/均匀）。</li>
+                <li>若左右滑块重合为<strong>确定分数</strong>，分布将锁定为“均匀”。</li>
+                <li>最后请选择您对该打分的<strong>确信程度</strong>。</li>
+            </ul>
+        </div>
+        <button class="btn" onclick="goToInfo()">下一步：填写基本信息</button>
+    </div>
+
+    <div id="page-info" class="page">
+        <h1>填写基本信息</h1>
+        <div class="intro-text" style="margin-bottom: 20px;">为了保证数据的学术有效性，请如实填写以下信息（数据仅作统计分析使用，严格保密）。</div>
+        
+        <div class="form-group">
+            <label>1. 姓名 / 昵称 (必填)</label>
+            <input type="text" id="user-name" placeholder="请输入您的姓名">
+        </div>
+        
+        <div class="form-group">
+            <label>2. 年龄 (必填)</label>
+            <input type="number" id="user-age" placeholder="请输入您的年龄" min="10" max="99">
+        </div>
+
+        <div class="form-group">
+            <label>3. 性别</label>
+            <select id="user-gender">
+                <option value="">请选择...</option>
+                <option value="男">男</option>
+                <option value="女">女</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>4. 专业 / 职业背景</label>
+            <select id="user-bg">
+                <option value="">请选择...</option>
+                <option value="临床医学相关">临床医学相关</option>
+                <option value="工业设计相关">工业设计相关</option>
+                <option value="工程制造相关">工程制造相关</option>
+                <option value="其他">其他</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>5. 您对外骨骼产品的了解程度</label>
+            <select id="user-exp">
+                <option value="">请选择...</option>
+                <option value="非常了解(研发/深度使用)">非常了解(研发/深度使用)</option>
+                <option value="一般了解(见过实物/查过资料)">一般了解(见过实物/查过资料)</option>
+                <option value="仅听说过">仅听说过</option>
+                <option value="完全不了解">完全不了解</option>
+            </select>
+        </div>
+
+        <button class="btn" id="start-survey-btn" onclick="startSurvey()">提交信息并开始打分</button>
+    </div>
+
+    <div id="page-scoring" class="page">
+        <h2 id="scheme-title" style="text-align: center; color: #2c3e50; margin-top: 0; margin-bottom: 10px; transition: all 0.5s ease;"></h2>
+        
+        <div id="img-box" class="img-container img-container-large">
+            <img id="scheme-img" src="" alt="造型方案">
+        </div>
+        
+        <div id="scoring-module" class="scoring-module">
+            <div class="indicator-title" id="ind-title">加载中...</div>
+            <div class="indicator-desc" id="ind-desc">描述加载中...</div>
+            
+            <div class="module-label">1. 请选择分数区间或固定分 (0-10)</div>
+            <div id="score-slider"></div>
+
+            <div class="module-label">2. 分数分布偏向</div>
+            <div class="distribution-options">
+                <div class="dist-option">
+                    <input type="radio" name="dist" id="dist-L" value="L" disabled>
+                    <label for="dist-L">偏左(L)</label>
+                </div>
+                <div class="dist-option">
+                    <input type="radio" name="dist" id="dist-M" value="M" disabled>
+                    <label for="dist-M">居中(M)</label>
+                </div>
+                <div class="dist-option">
+                    <input type="radio" name="dist" id="dist-R" value="R" disabled>
+                    <label for="dist-R">偏右(R)</label>
+                </div>
+                <div class="dist-option">
+                    <input type="radio" name="dist" id="dist-U" value="U" disabled>
+                    <label for="dist-U">均匀(U)</label>
+                </div>
+            </div>
+
+            <div class="module-label">3. 请选择确信程度 (当前: <span id="conf-val-display">--</span>%)</div>
+            <div class="confidence-wrapper">
+                <input type="range" id="conf-slider" min="0" max="100" step="5" value="50" disabled oninput="updateConfDisplay()">
+                <div class="conf-labels">
+                    <span>0%</span><span>20%</span><span>40%</span><span>60%</span><span>80%</span><span>100%</span>
+                </div>
+            </div>
+
+            <button class="btn" id="next-btn" onclick="nextStep()" disabled>下一步</button>
+        </div>
+    </div>
+
+    <div id="page-result" class="page">
+        <h1>调研结束，感谢参与！</h1>
+        <p>评估数据已就绪，请点击下方按钮上传至服务器。</p>
+        <textarea id="raw-data" style="display: none;"></textarea>
+        <button class="btn" id="submit-btn" onclick="submitData()">一键提交数据</button>
+        <div style="overflow-x:auto; margin-top: 15px;">
+            <table class="result-table" id="result-table">
+                <thead><tr><th>方案</th><th>指标</th><th>记录格式</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // 1. 动静分离：自动生成方案 (图片从腾讯云极速拉取)
+    // ==========================================
+    const totalSchemes = 6;
+    const schemes = [];
+    
+    // 这是你专属的腾讯云国内极速节点地址
+    const tencentCDN = "https://exoskeleton-survey-1425414188.cos.ap-shanghai.myqcloud.com/";
+
+    for (let i = 1; i <= totalSchemes; i++) {
+        // 让网页去腾讯云下载图片，而不是去 Netlify
+        schemes.push({ id: i, img: tencentCDN + `scheme${i}.png` });
+    }
+
+    const indicators = [
+        { id: 1, title: "1. 造型圆润防夹性", desc: "强调造型边角圆润，防止人体皮肤等被夹到" },
+        { id: 2, title: "2. 视觉透气性", desc: "强调产品看起来透气，不容易闷汗" },
+        { id: 3, title: "3. 关节仿生顺应度", desc: "产品仿生人体关节，强调运动协调性" },
+        { id: 4, title: "4. 穿脱便捷度", desc: "强调产品穿着和脱下的便捷度" },
+        { id: 5, title: "5. 造型轻盈感", desc: "强调造型结构轻量化，造型视觉轻盈感" },
+        { id: 6, title: "6. 运动防干涉度", desc: "强调穿着此款外骨骼时运动顺畅感" },
+        { id: 7, title: "7. 弱病耻感设计", desc: "强调外骨骼造型的去医疗化，偏生活化的感觉" },
+        { id: 8, title: "8. 视觉安全信任感", desc: "强调产品看起来的安全感，让内心有信任感" },
+        { id: 9, title: "9. 视觉平衡感", desc: "强调产品造型静态情况下的平衡性" },
+        { id: 10, title: "10. 色彩材质亲和力", desc: "强调这款产品造型的材质让人有亲切感" },
+        { id: 11, title: "11. 造型精细度", desc: "强调这款产品模块化工艺精致细致程度" },
+        { id: 12, title: "12. 人机贴合感", desc: "强调这款外骨骼壳体与人身体轮廓的视觉融合度" },
+        { id: 13, title: "13. 产品交互直观性", desc: "强调这款外骨骼的造型的使用方式的直观性" },
+        { id: 14, title: "14. 整体稳重感", desc: "强调产品整体稳重感" }
+    ];
+
+    let currentScheme = 0;
+    let currentInd = 0;
+    let surveyData = [];
+    let sliderInteracted = false;
+    let isExactScore = false;
+
+    // 2. 初始化双滑块
+    const scoreSlider = document.getElementById('score-slider');
+    noUiSlider.create(scoreSlider, {
+        start: [3, 7], connect: true, step: 1,
+        range: { 'min': 0, 'max': 10 },
+        pips: { mode: 'steps', density: 10 }
+    });
+
+    scoreSlider.noUiSlider.on('update', function (values) {
+        sliderInteracted = true;
+        let v1 = parseInt(values[0]), v2 = parseInt(values[1]);
+        isExactScore = (v1 === v2);
+        
+        let radios = document.getElementsByName('dist');
+        let distU = document.getElementById('dist-U');
+        document.getElementById('conf-slider').disabled = false;
+        
+        if (isExactScore) {
+            radios.forEach(r => { r.disabled = true; r.checked = false; });
+            distU.disabled = false; distU.checked = true;
+        } else {
+            radios.forEach(r => r.disabled = false);
+        }
+        checkNextButton();
+    });
+
+    document.getElementsByName('dist').forEach(r => r.addEventListener('change', checkNextButton));
+    document.getElementById('conf-slider').addEventListener('input', checkNextButton);
+
+    function updateConfDisplay() {
+        document.getElementById('conf-val-display').innerText = document.getElementById('conf-slider').value;
+    }
+
+    function checkNextButton() {
+        let distSelected = document.querySelector('input[name="dist"]:checked');
+        let confVal = document.getElementById('conf-val-display').innerText;
+        document.getElementById('next-btn').disabled = !(sliderInteracted && distSelected && confVal !== '--');
+    }
+
+// 准备一个空盒子，用来装个人信息
+    let userInfo = {};
+
+    // 页面跳转逻辑 1：去填写信息页
+    function goToInfo() {
+        document.getElementById('page-intro').classList.remove('active');
+        document.getElementById('page-info').classList.add('active');
+    }
+
+    // 页面跳转逻辑 2：保存信息并正式开始打分
+    function startSurvey() {
+        // 获取用户输入的值
+        let name = document.getElementById('user-name').value.trim();
+        let age = document.getElementById('user-age').value.trim();
+        let gender = document.getElementById('user-gender').value;
+        let bg = document.getElementById('user-bg').value;
+        let exp = document.getElementById('user-exp').value;
+
+        // 简单的防呆验证：必须填姓名和年龄
+        if (!name || !age) {
+            alert("请完善姓名和年龄信息后再开始打分！");
+            return;
+        }
+
+        // 保存信息到内存
+        userInfo = { name, age, gender, bg, exp };
+
+        // 切换页面到打分页
+        document.getElementById('page-info').classList.remove('active');
+        document.getElementById('page-scoring').classList.add('active');
+        showScheme();
+    }
+
+    function showScheme() {
+        currentInd = 0;
+        let imgBox = document.getElementById('img-box');
+        let imgEl = document.getElementById('scheme-img');
+        let moduleEl = document.getElementById('scoring-module');
+        let titleEl = document.getElementById('scheme-title'); // 获取刚刚添加的标题元素
+        
+        // 定义中文数字，用于匹配方案序号
+        const cnNumbers = ['一', '二', '三', '四', '五', '六'];
+        
+        // 更新图片和标题文字
+        imgEl.src = schemes[currentScheme].img;
+        titleEl.innerText = `方案${cnNumbers[currentScheme]}`;
+        
+        // 大图展示模式：标题变大，隐藏打分模块
+        titleEl.style.fontSize = '24px';
+        imgBox.className = 'img-container img-container-large';
+        moduleEl.style.display = 'none';
+        
+        // 2秒后进入打分模式
+        setTimeout(() => {
+            titleEl.style.fontSize = '18px'; // 标题缩小，给打分模块腾出空间
+            imgBox.className = 'img-container img-container-small';
+            moduleEl.style.display = 'flex';
+            loadIndicator();
+        }, 2000);
+    }
+
+    function loadIndicator() {
+        sliderInteracted = false;
+        scoreSlider.noUiSlider.set([3, 7]);
+        document.getElementById('conf-slider').value = 50;
+        document.getElementById('conf-slider').disabled = true;
+        document.getElementById('conf-val-display').innerText = "--";
+        document.getElementsByName('dist').forEach(r => { r.checked = false; r.disabled = true; });
+        document.getElementById('next-btn').disabled = true;
+
+        document.getElementById('ind-title').innerText = indicators[currentInd].title;
+        document.getElementById('ind-desc').innerText = indicators[currentInd].desc;
+        document.getElementById('next-btn').innerText = (currentScheme === totalSchemes - 1 && currentInd === indicators.length - 1) ? "生成最终数据" : "下一个指标";
+    }
+
+    function nextStep() {
+        let val = scoreSlider.noUiSlider.get();
+        let v1 = parseInt(val[0]), v2 = parseInt(val[1]);
+        let dist = document.querySelector('input[name="dist"]:checked').value;
+        let conf = document.getElementById('conf-slider').value;
+        
+        // 核心修改点：统一输出格式，例如 ([7,7],U,90) 或 ([6,8],R,100)
+        let recordStr = `([${v1},${v2}],${dist},${conf})`;
+        surveyData.push({ s: currentScheme + 1, i: currentInd + 1, r: recordStr });
+
+        currentInd++;
+        if (currentInd < indicators.length) {
+            loadIndicator();
+        } else {
+            currentScheme++;
+            if (currentScheme < totalSchemes) { 
+                showScheme(); 
+            } else { 
+                finishSurvey(); 
+            }
+        }
+    }
+
+    function finishSurvey() {
+        document.getElementById('page-scoring').classList.remove('active');
+        document.getElementById('page-result').classList.add('active');
+        
+        let tbody = document.querySelector('#result-table tbody');
+        
+        // 核心改造：在这里把个人信息打包拼接到最终输出的文本顶部
+        let rawText = `【受访者信息】\n`;
+        rawText += `姓名:${userInfo.name}, 年龄:${userInfo.age}, 性别:${userInfo.gender || '未填'}, 专业:${userInfo.bg || '未填'}, 经验:${userInfo.exp || '未填'}\n\n`;
+        rawText += `【评估数据】\n`;
+        
+        surveyData.forEach(item => {
+            tbody.innerHTML += `<tr><td>方案${item.s}</td><td>指标${item.i}</td><td>${item.r}</td></tr>`;
+            rawText += `S${item.s},I${item.i},${item.r}\n`;
+        });
+        
+        // 把拼好的完整数据塞进隐藏的输入框，准备发给 Forminit
+        document.getElementById('raw-data').value = rawText;
+    }
+
+    function submitData() {
+        let btn = document.getElementById('submit-btn');
+        btn.innerText = "正在发送..."; btn.disabled = true;
+        
+        fetch("https://forminit.com/f/fa26t1zysxk", {
+            method: 'POST',
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ "EvaluationData": document.getElementById('raw-data').value })
+        }).then(res => {
+            if (res.ok) { alert("提交成功！数据已进入数据库。"); btn.innerText = "已提交"; } 
+            else { alert("提交失败，请点击重新提交"); btn.disabled = false; btn.innerText = "重新提交"; }
+        }).catch(() => { alert("网络异常"); btn.disabled = false; });
+    }
+</script>
+
+</body>
+</html>
