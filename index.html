@@ -168,7 +168,10 @@
                 </div>
             </div>
 
-            <button class="btn" id="next-btn" onclick="nextStep()" disabled>下一步</button>
+            <div style="display: flex; gap: 15px; margin-top: 20px;">
+                <button class="btn" id="prev-btn" onclick="prevStep()" style="margin-top: 0; background: #95a5a6; display: none;">上一题</button>
+                <button class="btn" id="next-btn" onclick="nextStep()" disabled style="margin-top: 0;">下一步</button>
+            </div>
         </div>
     </div>
 
@@ -296,89 +299,168 @@
         showScheme();
     }
 
-    function showScheme() {
-        currentInd = 0;
+    // ==========================================
+    // 核心交互与状态管理模块 (新增：存档与回退机制)
+    // ==========================================
+
+    // 1. 存档到手机本地内存
+    function saveLocal() {
+        localStorage.setItem('exoSurvey', JSON.stringify({ userInfo, currentScheme, currentInd, surveyData }));
+    }
+
+    // 2. 页面一加载，自动检查是否有防丢缓存
+    window.onload = function() {
+        let saved = localStorage.getItem('exoSurvey');
+        if (saved) {
+            let data = JSON.parse(saved);
+            // 只有当存在打分进度时才触发提示
+            if (data.surveyData && data.surveyData.length > 0) {
+                if (confirm("系统检测到您上次有意外退出的打分进度，是否继续？\n(点击“确定”恢复进度，点击“取消”重新开始)")) {
+                    userInfo = data.userInfo;
+                    currentScheme = data.currentScheme;
+                    currentInd = data.currentInd;
+                    surveyData = data.surveyData;
+
+                    // 界面跳转并恢复 UI
+                    document.getElementById('page-intro').classList.remove('active');
+                    document.getElementById('page-info').classList.remove('active');
+                    document.getElementById('page-scoring').classList.add('active');
+                    showScheme(true); // true 代表跳过大图动画，直接进入打分状态
+                    return;
+                } else {
+                    localStorage.removeItem('exoSurvey'); // 放弃旧进度
+                }
+            }
+        }
+    }
+
+    // 3. 升级版：展示方案图片 (增加 skipAnim 参数用于回退/恢复)
+    function showScheme(skipAnim = false, rawToRestore = null) {
         let imgBox = document.getElementById('img-box');
         let imgEl = document.getElementById('scheme-img');
         let moduleEl = document.getElementById('scoring-module');
-        let titleEl = document.getElementById('scheme-title'); // 获取刚刚添加的标题元素
-        
-        // 定义中文数字，用于匹配方案序号
+        let titleEl = document.getElementById('scheme-title');
         const cnNumbers = ['一', '二', '三', '四', '五', '六'];
-        
-        // 更新图片和标题文字
+
         imgEl.src = schemes[currentScheme].img;
         titleEl.innerText = `方案${cnNumbers[currentScheme]}`;
-        
-        // 大图展示模式：标题变大，隐藏打分模块
-        titleEl.style.fontSize = '24px';
-        imgBox.className = 'img-container img-container-large';
-        moduleEl.style.display = 'none';
-        
-        // 2秒后进入打分模式
-        setTimeout(() => {
-            titleEl.style.fontSize = '18px'; // 标题缩小，给打分模块腾出空间
+
+        if (skipAnim) {
+            // 如果是退回来的，不浪费时间看 2 秒动画，直接显示打分器
+            titleEl.style.fontSize = '18px';
             imgBox.className = 'img-container img-container-small';
             moduleEl.style.display = 'flex';
-            loadIndicator();
-        }, 2000);
+            loadIndicator(rawToRestore);
+        } else {
+            // 正常的 2秒 大图展示模式
+            titleEl.style.fontSize = '24px';
+            imgBox.className = 'img-container img-container-large';
+            moduleEl.style.display = 'none';
+
+            setTimeout(() => {
+                titleEl.style.fontSize = '18px';
+                imgBox.className = 'img-container img-container-small';
+                moduleEl.style.display = 'flex';
+                loadIndicator(rawToRestore);
+            }, 2000);
+        }
     }
 
-    function loadIndicator() {
-        sliderInteracted = false;
-        scoreSlider.noUiSlider.set([3, 7]);
-        document.getElementById('conf-slider').value = 50;
-        document.getElementById('conf-slider').disabled = true;
-        document.getElementById('conf-val-display').innerText = "--";
-        document.getElementsByName('dist').forEach(r => { r.checked = false; r.disabled = true; });
-        document.getElementById('next-btn').disabled = true;
+    // 4. 升级版：加载当前指标 (具备还原记忆功能)
+    function loadIndicator(rawToRestore = null) {
+        sliderInteracted = !!rawToRestore; // 如果是退回来的，算作已交互
 
+        if (rawToRestore) {
+            // 时光倒流：还原专家上一次选的滑块和选项
+            scoreSlider.noUiSlider.set([rawToRestore.v1, rawToRestore.v2]);
+            document.getElementById('conf-slider').value = rawToRestore.conf;
+            document.getElementById('conf-slider').disabled = false;
+            document.getElementById('conf-val-display').innerText = rawToRestore.conf;
+            document.getElementsByName('dist').forEach(r => {
+                r.disabled = (rawToRestore.v1 === rawToRestore.v2); // 同分锁定规则保留
+                if(r.value === rawToRestore.dist) r.checked = true;
+            });
+        } else {
+            // 全新题目：重置所有输入
+            scoreSlider.noUiSlider.set([3, 7]);
+            document.getElementById('conf-slider').value = 50;
+            document.getElementById('conf-slider').disabled = true;
+            document.getElementById('conf-val-display').innerText = "--";
+            document.getElementsByName('dist').forEach(r => { r.checked = false; r.disabled = true; });
+        }
+
+        // 更新文字标题
         document.getElementById('ind-title').innerText = indicators[currentInd].title;
         document.getElementById('ind-desc').innerText = indicators[currentInd].desc;
-        document.getElementById('next-btn').innerText = (currentScheme === totalSchemes - 1 && currentInd === indicators.length - 1) ? "生成最终数据" : "下一个指标";
+
+        // 动态控制上一题/下一题按钮的显示状态
+        document.getElementById('prev-btn').style.display = (currentScheme === 0 && currentInd === 0) ? "none" : "block";
+        document.getElementById('next-btn').innerText = (currentScheme === totalSchemes - 1 && currentInd === indicators.length - 1) ? "生成最终数据" : "下一步";
+
+        checkNextButton(); // 重新检查下一步按钮的禁用状态
     }
 
+    // 5. 新增：退回上一题逻辑
+    function prevStep() {
+        if (surveyData.length === 0) return; 
+
+        // 把上一题的完整数据（包括原始状态）弹出来
+        let lastRecord = surveyData.pop(); 
+
+        if (currentInd > 0) {
+            currentInd--;
+            loadIndicator(lastRecord.raw); // 原地更新 UI
+        } else {
+            currentScheme--;
+            currentInd = indicators.length - 1;
+            showScheme(true, lastRecord.raw); // 退回上一张图，强制跳过 2 秒动画
+        }
+        saveLocal(); // 倒退后也要更新一下内存
+    }
+
+    // 6. 升级版：提交下一题 (记录记忆胶囊并存盘)
     function nextStep() {
         let val = scoreSlider.noUiSlider.get();
         let v1 = parseInt(val[0]), v2 = parseInt(val[1]);
         let dist = document.querySelector('input[name="dist"]:checked').value;
         let conf = document.getElementById('conf-slider').value;
-        
-        // 核心修改点：统一输出格式，例如 ([7,7],U,90) 或 ([6,8],R,100)
+
         let recordStr = `([${v1},${v2}],${dist},${conf})`;
-        surveyData.push({ s: currentScheme + 1, i: currentInd + 1, r: recordStr });
+        // raw 字段就是为了给上一题还原 UI 准备的时间胶囊
+        surveyData.push({ s: currentScheme + 1, i: currentInd + 1, r: recordStr, raw: {v1, v2, dist, conf} });
 
         currentInd++;
+        saveLocal(); // ⚡ 每次前进都自动存档！
+
         if (currentInd < indicators.length) {
             loadIndicator();
         } else {
             currentScheme++;
-            if (currentScheme < totalSchemes) { 
-                showScheme(); 
-            } else { 
-                finishSurvey(); 
+            if (currentScheme < totalSchemes) {
+                showScheme();
+            } else {
+                finishSurvey();
             }
         }
     }
 
+    // 7. 升级版：结束问卷 (交卷后销毁内存)
     function finishSurvey() {
         document.getElementById('page-scoring').classList.remove('active');
         document.getElementById('page-result').classList.add('active');
         
         let tbody = document.querySelector('#result-table tbody');
-        
-        // 核心改造：在这里把个人信息打包拼接到最终输出的文本顶部
-        let rawText = `【受访者信息】\n`;
-        rawText += `姓名:${userInfo.name}, 年龄:${userInfo.age}, 性别:${userInfo.gender || '未填'}, 专业:${userInfo.bg || '未填'}, 经验:${userInfo.exp || '未填'}\n\n`;
-        rawText += `【评估数据】\n`;
+        let rawText = `【受访者信息】\n姓名:${userInfo.name}, 年龄:${userInfo.age}, 性别:${userInfo.gender || '未填'}, 专业:${userInfo.bg || '未填'}, 经验:${userInfo.exp || '未填'}\n\n【评估数据】\n`;
         
         surveyData.forEach(item => {
             tbody.innerHTML += `<tr><td>方案${item.s}</td><td>指标${item.i}</td><td>${item.r}</td></tr>`;
             rawText += `S${item.s},I${item.i},${item.r}\n`;
         });
         
-        // 把拼好的完整数据塞进隐藏的输入框，准备发给 Forminit
         document.getElementById('raw-data').value = rawText;
+        
+        // 关键：问卷做完后，把本地缓存清理掉，以免影响下次全新的填答
+        localStorage.removeItem('exoSurvey'); 
     }
 
     function submitData() {
