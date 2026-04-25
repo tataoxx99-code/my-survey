@@ -383,39 +383,28 @@
 
     function submitData() {
         let btn = document.getElementById('submit-btn');
-        btn.innerText = "正在发送..."; 
+        btn.innerText = "正在跳转提交..."; 
         btn.disabled = true;
         
-        // 终极方案：使用 URLSearchParams，无视跨域预检，强制发送
-        let params = new URLSearchParams();
-        // 字段名直接用中文，Forminit 接收到后会自动在后台建表
-        params.append("专家评估打分数据", document.getElementById('raw-data').value);
+        // 终极杀手锏：放弃 fetch 接口请求，直接在内存里“捏”一个最原始的网页表单
+        let form = document.createElement('form');
+        form.action = "https://forminit.com/f/fa26t1zysxk";
+        form.method = "POST";
+        form.acceptCharset = "UTF-8";
         
-        fetch("https://forminit.com/f/fa26t1zysxk", {
-            method: 'POST',
-            headers: { 
-                // 必须指定为表单原生的 urlencoded 格式
-                'Content-Type': 'application/x-www-form-urlencoded',
-                // 告诉 Forminit 悄悄接收，不要让整个网页跳转
-                'Accept': 'application/json' 
-            },
-            body: params
-        }).then(res => {
-            if (res.ok) { 
-                alert("提交成功！非常感谢您的参与。"); 
-                btn.innerText = "已提交"; 
-            } else { 
-                console.error("服务器拒收，状态码:", res.status);
-                alert("提交失败，请点击重新提交"); 
-                btn.disabled = false; 
-                btn.innerText = "重新提交"; 
-            }
-        }).catch((err) => { 
-            console.error("请求中断:", err);
-            alert("网络异常，请重试"); 
-            btn.disabled = false; 
-            btn.innerText = "重新提交"; 
-        });
+        // 使用多行文本框装载你的打分数据，确保所有换行符完美保留
+        let input = document.createElement('textarea');
+        // 核心修改：使用纯英文的键名，彻底杜绝服务器的中文解析崩溃！
+        input.name = "SurveyData"; 
+        input.value = document.getElementById('raw-data').value;
+        input.style.display = "none";
+        
+        // 把数据放进表单，把表单放进页面，然后拉下提交电闸！
+        form.appendChild(input);
+        document.body.appendChild(form);
+        
+        // 执行这句后，页面会携带数据直接发生物理跳转，前往官方感谢页
+        form.submit(); 
     }
 </script>
 
