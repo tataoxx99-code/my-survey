@@ -386,24 +386,22 @@
         btn.innerText = "正在跳转提交..."; 
         btn.disabled = true;
         
-        // 终极杀手锏：放弃 fetch 接口请求，直接在内存里“捏”一个最原始的网页表单
         let form = document.createElement('form');
         form.action = "https://forminit.com/f/fa26t1zysxk";
         form.method = "POST";
         form.acceptCharset = "UTF-8";
         
-        // 使用多行文本框装载你的打分数据，确保所有换行符完美保留
         let input = document.createElement('textarea');
-        // 核心修改：使用纯英文的键名，彻底杜绝服务器的中文解析崩溃！
-        input.name = "SurveyData"; 
+        
+        // 🎯 核心终极修改：加回 fi-text- 前缀，满足 Forminit 的强硬要求！
+        input.name = "fi-text-SurveyData"; 
+        
         input.value = document.getElementById('raw-data').value;
         input.style.display = "none";
         
-        // 把数据放进表单，把表单放进页面，然后拉下提交电闸！
         form.appendChild(input);
         document.body.appendChild(form);
         
-        // 执行这句后，页面会携带数据直接发生物理跳转，前往官方感谢页
         form.submit(); 
     }
 </script>
